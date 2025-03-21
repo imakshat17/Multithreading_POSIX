@@ -1,0 +1,80 @@
+#include<stdio.h>
+#include<stdlib.h>
+#include <unistd.h>
+#include <errno.h>
+#include <pthread.h>
+
+#define MAX_SLAVES 5
+pthread_t slaves[MAX_SLAVES];
+
+void* write_to_file(void *ptr) {
+    char filename[100];
+    char text[100];
+    int len = 0;
+    int count = 0;
+    int *id = (int*)ptr;  // Cast to int pointer to retrieve the thread id
+    pthread_setcancelstate(PTHREAD_CANCEL_ENABLE,0);
+    pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS,0);
+    sprintf(filename, "pthread.%d.txt", *id);  // Use the thread id
+    FILE* fptr = fopen(filename, "w");
+    if (!fptr) {
+        printf("Error: File can't be opened due to %d\n", errno);
+        return NULL;  // No need to return a value, but return NULL since it is a void* function
+    }
+
+    while (1) {
+        len = sprintf(text, "%d: I am thread %d", count++, *id);
+        fwrite(text, sizeof(char), len, fptr);
+        fflush(fptr);
+        sleep(1);
+    }
+
+    return NULL;  // Return NULL because the function is expected to return void*
+}
+
+int main(int argc, char** argv) {
+    int *pthread_id = NULL;
+
+    // Create the threads
+    for (int i = 0; i < MAX_SLAVES; i++) {
+        pthread_id = (int*)calloc(1, sizeof(int));  // Allocate memory for each thread id
+        if (pthread_id == NULL) {  // Always check for allocation failure
+            perror("Failed to allocate memory for pthread_id");
+            return 1;  // Exit if memory allocation fails
+        }
+        *pthread_id = i;  // Assign a unique id to each thread
+
+        // Create the thread, passing the thread id
+        if (pthread_create(&slaves[i], NULL, write_to_file, (void*)pthread_id) != 0) {
+            perror("Failed to create thread");
+            return 1;  // Exit if thread creation fails
+        }
+    }
+     int choice;
+     int num;
+   while(1){
+      printf("1 :if you want to cancel thread\n");
+      scanf("%d",&choice);
+      printf("Enter thread id:\n");
+      scanf("%d",&num);
+     if(num<0  || num>=MAX_SLAVES){
+       printf("Invalid Thread id\n");
+       exit(0);
+     }
+      switch(choice){
+       case 1:
+              pthread_cancel(slaves[num]);
+           break;
+       default:
+              printf("please enter valid thread id\n");
+               continue;
+         }
+
+     }
+    // Wait for all threads to finish (optional, but usually a good practice)
+//    for (int i = 0; i < MAX_SLAVES; i++) {
+  //      pthread_join(slaves[i], NULL);  // Wait for each thread to finish
+   // }
+
+    return 0;
+}
